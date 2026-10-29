@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Project Management Tool</title>
+  <style>
+    :root{--navy:#14213d;--blue:#2563eb;--bg:#f3f6fb;--ink:#172033;--muted:#6b7280;--line:#e5eaf2}
+    *{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    .layout{display:grid;grid-template-columns:220px 1fr;min-height:100vh}.sidebar{background:var(--navy);color:white;padding:28px 18px}
+    .brand{font-size:20px;font-weight:800;margin:0 0 32px}.brand span{color:#93c5fd}.nav{padding:12px 14px;border-radius:10px;margin:7px 0;color:#dbeafe}.nav.active{background:#263b62;color:white}
+    main{padding:30px;max-width:1400px;width:100%;margin:auto}.top{display:flex;justify-content:space-between;gap:20px;align-items:center;flex-wrap:wrap}
+    h1{margin:0;font-size:29px}.muted{color:var(--muted);margin-top:7px}.pill{background:#dbeafe;color:#1d4ed8;border-radius:99px;padding:8px 12px;font-size:13px}
+    .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:26px 0}.card{background:white;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 5px 18px #182c4b08}
+    .stat-label{color:var(--muted);font-size:14px}.stat-num{font-size:30px;font-weight:800;margin-top:9px}.content{display:grid;grid-template-columns:1.25fr 1fr;gap:18px}
+    .section-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:18px}.section-head h2{font-size:18px;margin:0}
+    button{border:0;border-radius:9px;padding:10px 14px;background:var(--blue);color:white;font-weight:650;cursor:pointer}button.secondary{background:#e8eef9;color:#1e3a8a}
+    .project{padding:13px 0;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:center}.project strong,.task strong{display:block}.project small,.task small{color:var(--muted);display:block;margin-top:5px}
+    .status{font-size:12px;border-radius:99px;background:#e0f2fe;color:#075985;padding:6px 9px;white-space:nowrap}.status.done{background:#dcfce7;color:#166534}.status.todo{background:#fef3c7;color:#92400e}
+    .task{padding:13px 0;border-top:1px solid var(--line);display:flex;gap:12px;align-items:center;justify-content:space-between}.task select{max-width:130px}
+    form{display:grid;gap:10px;margin-top:12px}input,textarea,select{width:100%;border:1px solid #d7dfeb;border-radius:9px;padding:11px;font:inherit;background:white}textarea{resize:vertical;min-height:70px}
+    .hidden{display:none}.foot{color:var(--muted);font-size:12px;margin-top:20px}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{padding:16px}.brand{margin-bottom:12px}.nav{display:inline-block;margin:3px}.stats{grid-template-columns:repeat(2,1fr)}.content{grid-template-columns:1fr}main{padding:18px}}
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">Project<span>Flow</span></div>
+    <div class="nav active">▦ &nbsp; Dashboard</div><div class="nav">▣ &nbsp; Projects</div>
+    <div class="nav">✓ &nbsp; Tasks</div><div class="nav">▦ &nbsp; Calendar</div>
+    <div class="nav">◷ &nbsp; Reports</div><div class="nav">♙ &nbsp; Team</div>
+  </aside>
+  <main>
+    <div class="top"><div><h1>Project Overview</h1><div class="muted">Plan, track, and deliver your team's work.</div></div><span class="pill">Java + Spring Boot starter</span></div>
+    <section class="stats">
+      <div class="card"><div class="stat-label">Total Projects</div><div class="stat-num" id="projectCount">0</div></div>
+      <div class="card"><div class="stat-label">Total Tasks</div><div class="stat-num" id="taskCount">0</div></div>
+      <div class="card"><div class="stat-label">In Progress</div><div class="stat-num" id="progressCount">0</div></div>
+      <div class="card"><div class="stat-label">Completed</div><div class="stat-num" id="doneCount">0</div></div>
+    </section>
+    <section class="content">
+      <div class="card">
+        <div class="section-head"><h2>Projects</h2><button onclick="toggleForm('projectForm')">+ New Project</button></div>
+        <form id="projectForm" class="hidden">
+          <input id="pName" placeholder="Project name" required>
+          <textarea id="pDescription" placeholder="Project description"></textarea>
+          <label>Due date <input id="pDue" type="date"></label>
+          <button type="submit">Create project</button>
+        </form>
+        <div id="projects"></div>
+      </div>
+      <div class="card">
+        <div class="section-head"><h2>Task Board</h2><button onclick="toggleForm('taskForm')">+ New Task</button></div>
+        <form id="taskForm" class="hidden">
+          <input id="tTitle" placeholder="Task title" required>
+          <select id="tProject"></select>
+          <input id="tAssignee" placeholder="Assignee / team">
+          <select id="tPriority"><option>Medium</option><option>High</option><option>Low</option></select>
+          <button type="submit">Add task</button>
+        </form>
+        <div id="tasks"></div>
+      </div>
+    </section>
+    <div class="foot">Starter version: sample data is stored in memory and resets when the server restarts. Database, login, file sharing, and live chat are not implemented yet.</div>
+  </main>
+</div>
+<script>
+const api = '/api';
+async function request(path, options={}) {
+  const response = await fetch(api + path, {headers:{'Content-Type':'application/json'}, ...options});
+  if(!response.ok) throw new Error('Request failed: ' + response.status);
+  return response.json();
+}
+function toggleForm(id){document.getElementById(id).classList.toggle('hidden')}
+function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function refresh(){
+  try {
+    const [projects,tasks]=await Promise.all([request('/projects'),request('/tasks')]);
+    document.getElementById('projectCount').textContent=projects.length;
+    document.getElementById('taskCount').textContent=tasks.length;
+    document.getElementById('progressCount').textContent=tasks.filter(t=>t.status==='In Progress').length;
+    document.getElementById('doneCount').textContent=tasks.filter(t=>t.status==='Done').length;
+    document.getElementById('projects').innerHTML=projects.map(p=>`<div class="project"><div><strong>${esc(p.name)}</strong><small>${esc(p.description||'No description')} · Due ${esc(p.dueDate||'not set')}</small></div><span class="status">${esc(p.status)}</span></div>`).join('');
+    document.getElementById('tProject').innerHTML=projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+    document.getElementById('tasks').innerHTML=tasks.map(t=>`<div class="task"><div><strong>${esc(t.title)}</strong><small>${esc(t.assignee||'Unassigned')} · ${esc(t.priority)} priority</small></div><select aria-label="Task status" onchange="updateTask(${t.id},this.value)"><option ${t.status==='To Do'?'selected':''}>To Do</option><option ${t.status==='In Progress'?'selected':''}>In Progress</option><option ${t.status==='Done'?'selected':''}>Done</option></select></div>`).join('');
+  } catch(e) { alert('Could not load data. Check that the Java server is running.'); }
+}
+document.getElementById('projectForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  await request('/projects',{method:'POST',body:JSON.stringify({name:pName.value,description:pDescription.value,dueDate:pDue.value})});
+  e.target.reset();e.target.classList.add('hidden');await refresh();
+});
+document.getElementById('taskForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  await request('/tasks',{method:'POST',body:JSON.stringify({projectId:Number(tProject.value),title:tTitle.value,assignee:tAssignee.value,priority:tPriority.value})});
+  e.target.reset();e.target.classList.add('hidden');await refresh();
+});
+async function updateTask(id,status){await request('/tasks/'+id+'/status',{method:'PATCH',body:JSON.stringify({status})});await refresh()}
+refresh();
+</script>
+</body>
+</html>
